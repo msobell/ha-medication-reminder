@@ -1,0 +1,41 @@
+blueprint:
+  name: Notify if sensor not triggered in 2 hours (8AM)
+  description: Sends a notification at 8:00 AM if the selected sensor has not changed state in the past 2 hours.
+  domain: automation
+  input:
+    sensor:
+      name: Sensor to monitor
+      selector:
+        entity:
+          domain: binary_sensor
+    notify_device:
+      name: Notify device
+      description: The device that should receive the notification
+      selector:
+        device:
+          integration: mobile_app
+    message:
+      name: Notification message
+      default: "Take your meds!"
+      selector:
+        text:
+
+trigger:
+  - platform: time
+    at: "08:00:00"
+
+condition:
+  - condition: template
+    value_template: >
+      {% set last_changed = states[input.sensor].last_changed %}
+      {% set now = now() %}
+      {{ (now - last_changed).total_seconds() > 7200 }}
+
+action:
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    message: !input message
+    title: "Sensor Inactivity Alert"
+
+mode: single

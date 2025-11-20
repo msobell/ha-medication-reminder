@@ -60,7 +60,7 @@ action:
             Sending notification.
           level: info
   # Send notification
-  - service: "{{ input.notify_service }}"
+  - service: !input notify_service
     data:
       message: !input message
       title: "Sensor Inactivity Alert"

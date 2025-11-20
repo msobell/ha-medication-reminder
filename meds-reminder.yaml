@@ -8,12 +8,12 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
-    notify_device:
-      name: Notify device
-      description: The device that should receive the notification
+    notify_service:
+      name: Notification service
+      description: Enter the notification service name (e.g., notify.mobile_app_iphone). Find it in Developer Tools > Services.
+      default: notify.mobile_app_
       selector:
-        device:
-          integration: mobile_app
+        text:
     message:
       name: Notification message
       default: "Take your meds!"
@@ -60,9 +60,7 @@ action:
             Sending notification.
           level: info
   # Send notification
-  - service: notify.mobile_app
-    target:
-      device_id: !input notify_device
+  - service: "{{ input.notify_service }}"
     data:
       message: !input message
       title: "Sensor Inactivity Alert"

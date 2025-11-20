@@ -19,6 +19,12 @@ blueprint:
       default: "Take your meds!"
       selector:
         text:
+    debug:
+      name: Enable debug logging
+      description: Log debug information to Home Assistant logs
+      default: false
+      selector:
+        boolean:
 
 trigger:
   - platform: time
@@ -27,15 +33,42 @@ trigger:
 condition:
   - condition: template
     value_template: >
-      {% set last_changed = states[input.sensor].last_changed %}
-      {% set now = now() %}
-      {{ (now - last_changed).total_seconds() > 7200 }}
+      {% set sensor_state = states[input.sensor] %}
+      {% if sensor_state is none or sensor_state.last_changed is none %}
+        {{ false }}
+      {% else %}
+        {% set last_changed = sensor_state.last_changed %}
+        {% set now = now() %}
+        {% set time_diff = (now - last_changed).total_seconds() %}
+        {% if input.debug %}
+          {{ log("DEBUG: Sensor: " ~ input.sensor ~ ", Last changed: " ~ last_changed ~ ", Time diff (seconds): " ~ time_diff, level="INFO") }}
+        {% endif %}
+        {{ time_diff > 7200 }}
+      {% endif %}
 
 action:
-  - device_id: !input notify_device
-    domain: mobile_app
-    type: notify
-    message: !input message
-    title: "Sensor Inactivity Alert"
+  # Log debug info if enabled
+  - if:
+      - condition: template
+        value_template: "{{ input.debug }}"
+    then:
+      - service: system_log.write
+        data:
+          message: >
+            Medication Reminder: Sensor {{ input.sensor }} has not changed
+            in {{ ((now() - states[input.sensor].last_changed).total_seconds() / 3600) | round(2) }} hours.
+            Sending notification.
+          level: info
+  # Send notification
+  - service: notify.mobile_app
+    target:
+      device_id: !input notify_device
+    data:
+      message: !input message
+      title: "Sensor Inactivity Alert"
+      data:
+        actions:
+          - action: "DISMISS"
+            title: "Dismiss"
 
 mode: single
